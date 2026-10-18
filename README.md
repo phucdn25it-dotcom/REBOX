@@ -28,6 +28,8 @@ Mở `http://localhost:8080`. MySQL khởi tạo schema ở lần chạy đầu 
 
 GitHub lưu trữ mã nguồn nhưng GitHub Pages không chạy PHP. Để website hoạt động công khai, triển khai image Docker này lên hosting hỗ trợ Docker hoặc dùng hosting PHP/MySQL thông thường. Hosting cần HTTPS, MySQL/MariaDB, PHP 8.1+ với PDO MySQL và mbstring, Apache `mod_rewrite`; document root phải trỏ vào `public`. Cấu hình `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` trong phần secrets/environment của hosting. Import `database/schema.sql` cho database mới hoặc migration tương ứng cho database đã có. Không commit `.env`, thông tin kết nối database hoặc dữ liệu khách hàng.
 
+Với shared hosting, có thể cấu hình kết nối DB qua `app/config.local.php` (tạo từ `app/config.local.example.php`). Hướng dẫn từng bước cho phương án miễn phí nằm ở [DEPLOY_FREE_HOSTING.md](DEPLOY_FREE_HOSTING.md).
+
 ## Tính năng
 
 - Đăng ký, đăng nhập và phân quyền ADMIN, STAFF, CUSTOMER, PARTNER.

@@ -1,0 +1,1 @@
+<div class="empty-state"><div class="eyebrow dark-eyebrow">403 · ACCESS DENIED</div><h1>Bạn chưa có <em>quyền truy cập.</em></h1><a class="btn btn-dark" href="<?=e(url('/'))?>">Về trang chủ</a></div>

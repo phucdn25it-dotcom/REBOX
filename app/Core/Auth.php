@@ -1,0 +1,3 @@
+<?php
+namespace App\Core;
+final class Auth {public static function user():?array{if(empty($_SESSION['user_id']))return null;$s=Database::connection()->prepare('SELECT u.id,u.name,u.email,u.role_id,r.code role_code,r.name role_name,u.points,u.status FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status="ACTIVE"');$s->execute([$_SESSION['user_id']]);$u=$s->fetch();if(!$u){unset($_SESSION['user_id']);return null;}return $u;}public static function login(array $u):void{session_regenerate_id(true);$_SESSION['user_id']=$u['id'];}public static function logout():void{$_SESSION=[];session_destroy();}}

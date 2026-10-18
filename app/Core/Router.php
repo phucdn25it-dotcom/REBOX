@@ -1,0 +1,3 @@
+<?php
+namespace App\Core;
+final class Router {private array $routes=[];public function get(string $p,string $h):void{$this->routes['GET'][$p]=$h;}public function post(string $p,string $h):void{$this->routes['POST'][$p]=$h;}public function dispatch(string $m,string $p):void{$base=rtrim(dirname($_SERVER['SCRIPT_NAME']??''),'/');if($base&&str_starts_with($p,$base))$p=substr($p,strlen($base))?:'/';$h=$this->routes[$m][$p]??null;if(!$h){http_response_code(404);View::render('errors/404',['title'=>'ReBox request could not be completed.']);return;}[$c,$a]=explode('@',$h);$c='App\\Controllers\\'.$c;(new $c())->$a();}}

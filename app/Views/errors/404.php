@@ -1,0 +1,1 @@
+<div class="empty-state"><div class="eyebrow dark-eyebrow">404 · PAGE NOT FOUND</div><h1>Trang này đang <em>đi lạc.</em></h1><a class="btn btn-dark" href="<?=e(url('/'))?>">Về trang chủ</a></div>

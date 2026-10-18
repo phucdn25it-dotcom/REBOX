@@ -14,9 +14,19 @@ Website PHP MVC cho dịch vụ thuê hộp đựng thức ăn tái sử dụng.
 
 Chạy seed chỉ trên database demo. Đặt `REBOX_SEED_PASSWORD` thành mật khẩu riêng dài ít nhất 12 ký tự trước khi chạy `php database/seed.php`. Seed tạo các tài khoản `admin@rebox.local`, `staff@rebox.local`, `khach@rebox.local` và `partner@rebox.local`, dùng chung mật khẩu bạn vừa cấu hình. Không dùng dữ liệu demo hoặc mật khẩu demo trên website thật.
 
-## Đưa lên hosting PHP
+## Chạy bằng Docker
 
-GitHub lưu trữ mã nguồn nhưng GitHub Pages không chạy PHP. Để website hoạt động công khai, cần hosting có PHP và MySQL/MariaDB; trỏ document root tới thư mục `public`, cấu hình các biến môi trường DB, bật HTTPS, import schema/migrations và không chạy seed demo trên dữ liệu thật. Không commit tệp `.env`, thông tin kết nối database hoặc dữ liệu khách hàng.
+Cài Docker Desktop, sao chép `deploy.env.example` thành `.env`, đặt hai mật khẩu database riêng, rồi chạy:
+
+```powershell
+docker compose up --build -d
+```
+
+Mở `http://localhost:8080`. MySQL khởi tạo schema ở lần chạy đầu tiên và giữ dữ liệu trong volume `rebox_db`. Không xóa volume nếu muốn giữ dữ liệu. Không chạy seed demo trên database có dữ liệu thật.
+
+## Đưa website lên Internet
+
+GitHub lưu trữ mã nguồn nhưng GitHub Pages không chạy PHP. Để website hoạt động công khai, triển khai image Docker này lên hosting hỗ trợ Docker hoặc dùng hosting PHP/MySQL thông thường. Hosting cần HTTPS, MySQL/MariaDB, PHP 8.1+ với PDO MySQL và mbstring, Apache `mod_rewrite`; document root phải trỏ vào `public`. Cấu hình `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` trong phần secrets/environment của hosting. Import `database/schema.sql` cho database mới hoặc migration tương ứng cho database đã có. Không commit `.env`, thông tin kết nối database hoặc dữ liệu khách hàng.
 
 ## Tính năng
 

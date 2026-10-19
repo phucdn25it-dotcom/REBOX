@@ -9,7 +9,7 @@ $homeLocations = array_map(static fn(array $location): array => [
 $homeProducts = array_map(static fn(array $product): array => [
     'id' => (int)($product['id'] ?? 0),
     'name' => (string)($product['name'] ?? ''),
-    'image_url' => (string)($product['image_url'] ?? ''),
+    'image_url' => image_url($product['image_url'] ?? ''),
     'category' => (string)($product['category'] ?? ''),
     'material' => (string)($product['material'] ?? ''),
     'capacity_ml' => (int)($product['capacity_ml'] ?? 0),
@@ -31,7 +31,7 @@ $authParam = rawurlencode((string)json_encode([
     'role' => (string)($currentUser['role_code'] ?? ''),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 ?>
-<iframe id="rebox-home-frame" class="kage-frame" src="<?=e(url('/landing-pages/kage.html?locations=' . $locationsParam . '&cart=' . $cartQuantity . '&auth=' . $authParam . '&v=20261019-6'))?>" title="ReBox — dùng lại thật nhẹ nhàng" allow="autoplay; fullscreen" loading="eager"></iframe>
+<iframe id="rebox-home-frame" class="kage-frame" src="<?=e(url('/landing-pages/kage.html?locations=' . $locationsParam . '&cart=' . $cartQuantity . '&auth=' . $authParam . '&v=20261019-8'))?>" title="ReBox — dùng lại thật nhẹ nhàng" allow="autoplay; fullscreen" loading="eager"></iframe>
 <script>
 const reboxHomeProducts = <?= $homeProductsJson ?: '[]' ?>;
 const reboxHomeFrame = document.getElementById('rebox-home-frame');

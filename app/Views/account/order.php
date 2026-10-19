@@ -40,13 +40,21 @@
     <section class="admin-card order-history">
         <div class="staff-section-heading"><span class="eyebrow dark-eyebrow">LỊCH SỬ ĐƠN THUÊ</span><h2>Theo dõi bàn giao và nhận trả</h2><p>Mỗi lần nhân viên quét QR, ghi nhận tình trạng hoặc hoàn cọc sẽ xuất hiện tại đây.</p></div>
         <?php if (!empty($events)): ?><ol class="order-timeline">
-            <?php foreach ($events as $event): $eventLabels = ['ORDER_CREATED'=>'Tạo đơn','PAYMENT_CONFIRMED'=>'Xác nhận thanh toán','HANDOVER'=>'Bàn giao hộp','RETURN_RECEIVED'=>'Đã nhận hộp trả','CLEANED'=>'Đã vệ sinh và kiểm tra','DEPOSIT_REFUNDED'=>'Hoàn tiền cọc','ORDER_CANCELLED'=>'Hủy đơn']; ?>
+            <?php foreach ($events as $event): $eventLabels = ['ORDER_CREATED'=>'Tạo đơn','PAYMENT_CONFIRMED'=>'Xác nhận thanh toán','HANDOVER'=>'Bàn giao hộp','RETURN_REQUESTED'=>'Khách yêu cầu trả hộp','RETURN_APPROVED'=>'Xác nhận điểm trả','RETURN_DECLINED'=>'Từ chối yêu cầu trả','RETURN_RECEIVED'=>'Đã nhận hộp trả','CLEANED'=>'Đã vệ sinh và kiểm tra','DEPOSIT_REFUNDED'=>'Hoàn tiền cọc','ORDER_CANCELLED'=>'Hủy đơn']; ?>
                 <li class="order-event"><span class="order-event-dot"></span><div class="order-event-content"><div class="order-event-title"><b><?=e($eventLabels[$event['event_type']] ?? $event['event_type'])?></b><time><?=date('d/m/Y H:i', strtotime($event['created_at']))?></time></div>
                     <p><?php if (!empty($event['serial_code'])): ?>Hộp <?=e($event['serial_code'])?><?php endif; ?><?php if (!empty($event['condition_status'])): ?> · Tình trạng: <?=e($event['condition_status'])?><?php endif; ?><?php if (!empty($event['location_name'])): ?> · <?=e($event['location_name'])?><?php endif; ?></p>
                     <?php if (!empty($event['note'])): ?><small><?=e($event['note'])?></small><?php endif; ?><?php if (!empty($event['actor_name'])): ?><small>Ghi nhận bởi <?=e($event['actor_name'])?></small><?php endif; ?></div></li>
             <?php endforeach; ?>
         </ol><?php else: ?><p class="empty-state">Chưa có cập nhật bàn giao hoặc nhận trả.</p><?php endif; ?>
     </section>
+    <?php if (empty($canManage) && in_array($order['order_status'], ['RENTED','PARTIALLY_RETURNED'], true)): ?>
+        <?php $activeReturn = null; foreach (($returnRequests ?? []) as $request) { if (in_array($request['status'], ['PENDING','APPROVED'], true)) { $activeReturn = $request; break; } } ?>
+        <section class="admin-card"><h2>Trả hộp tại điểm nhận</h2>
+            <?php if ($activeReturn): ?><p>Yêu cầu đang <?= $activeReturn['status']==='PENDING'?'chờ nhân viên xác nhận':'đã được xác nhận' ?> tại <b><?=e($activeReturn['location_name'])?></b>.</p><?php if(!empty($activeReturn['staff_note'])):?><p>Ghi chú: <?=e($activeReturn['staff_note'])?></p><?php endif;?>
+            <?php elseif (!empty($returnLocations)): ?><p>Chọn điểm trả. Khi đến nơi, mở mã QR từng hộp để nhân viên quét và ghi nhận.</p><form class="admin-form" method="post" action="<?=e(url('/order/return-request'))?>"><?=csrf_field()?><input type="hidden" name="order_id" value="<?=$order['id']?>"><label>Điểm trả<select name="location_id" required><?php foreach($returnLocations as $location):?><option value="<?=$location['id']?>"><?=e($location['name'])?> · <?=e($location['address'])?></option><?php endforeach;?></select></label><label>Ghi chú<textarea name="customer_note" maxlength="500" placeholder="Thời gian dự kiến hoặc thông tin thêm"></textarea></label><button class="btn btn-dark">Gửi yêu cầu trả hộp</button></form>
+            <?php else: ?><p>Hiện chưa có điểm nhận trả đang hoạt động. Vui lòng liên hệ ReBox.</p><?php endif;?>
+        </section>
+    <?php endif; ?>
     <h2 class="subhead">Hộp trong đơn · mã QR bàn giao / trả</h2>
     <?php foreach ($items as $item): ?>
         <article class="admin-card"><h3><?=e($item['product'])?> × <?= (int)$item['quantity'] ?></h3><p><?= (int)$item['rental_days'] ?> ngày · <?=money($item['line_total'])?></p>

@@ -7,7 +7,7 @@
         <div class="cart-layout">
             <div class="cart-lines">
                 <?php foreach ($products as $p): $q = (int)($cart[$p['id']] ?? 0); ?>
-                    <div class="cart-line"><img src="<?=e($p['image_url'])?>" alt="<?=e($p['name'])?>"><div><h3><?=e($p['name'])?></h3><p><?=$q?> hộp · <?=money($p['rental_price'])?> / ngày · Cọc <?=money($p['deposit_amount'])?></p><form method="post" action="<?=e(url('/cart/remove'))?>"><?=csrf_field()?><input type="hidden" name="product_id" value="<?=$p['id']?>"><button class="link-btn">Xóa</button></form></div></div>
+                    <div class="cart-line"><img src="<?=e(image_url($p['image_url']))?>" alt="<?=e($p['name'])?>"><div><h3><?=e($p['name'])?></h3><p><?=$q?> hộp · <?=money($p['rental_price'])?> / ngày · Cọc <?=money($p['deposit_amount'])?></p><form method="post" action="<?=e(url('/cart/remove'))?>"><?=csrf_field()?><input type="hidden" name="product_id" value="<?=$p['id']?>"><button class="link-btn">Xóa</button></form></div></div>
                 <?php endforeach; ?>
             </div>
             <form class="checkout-card" method="post" action="<?=e(url('/checkout'))?>">

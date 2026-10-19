@@ -34,6 +34,14 @@ class StaffController extends Controller
         }
 
         $locationIds = array_map(static fn(array $location): int => (int)$location['id'], $locations);
+        $requestSql = "SELECT cr.*,o.order_code,u.name customer,l.name location_name FROM customer_return_requests cr JOIN rental_orders o ON o.id=cr.order_id JOIN users u ON u.id=cr.user_id JOIN locations l ON l.id=cr.location_id WHERE cr.status='PENDING'";
+        $requestArgs = [];
+        if ($user['role_code'] !== 'ADMIN' && $locationIds) {
+            $requestSql .= ' AND cr.location_id IN (' . implode(',', array_fill(0, count($locationIds), '?')) . ')';
+            $requestArgs = $locationIds;
+        } elseif ($user['role_code'] !== 'ADMIN') { $requestSql .= ' AND 1=0'; }
+        $requestSql .= ' ORDER BY cr.requested_at ASC';
+        $returnRequestsQuery = $db->prepare($requestSql); $returnRequestsQuery->execute($requestArgs);
         $inventory = [];
         $products = $db->query("SELECT id,name,sku,capacity_ml FROM products WHERE status='ACTIVE' ORDER BY name")->fetchAll();
         if ($locationIds) {
@@ -51,6 +59,7 @@ class StaffController extends Controller
             'locations' => $locations,
             'products' => $products,
             'inventory' => $inventory,
+            'returnRequests' => $returnRequestsQuery->fetchAll(),
         ]);
     }
 
@@ -198,6 +207,15 @@ class StaffController extends Controller
                 }
             }
 
+            if ($action === 'return') {
+                $approvedRequest = $db->prepare("SELECT location_id FROM customer_return_requests WHERE order_id=? AND status='APPROVED' ORDER BY id DESC LIMIT 1");
+                $approvedRequest->execute([$box['order_id']]);
+                $requestedLocation = $approvedRequest->fetchColumn();
+                if ($requestedLocation && (int)$requestedLocation !== $location) {
+                    throw new \RuntimeException('Yêu cầu trả đã được duyệt tại điểm khác. Hãy chọn đúng điểm trả khách đã đăng ký.');
+                }
+            }
+
             if ($action === 'checkout' && $box['lifecycle_status'] === 'RESERVED') {
                 $paymentQuery = $db->prepare("SELECT * FROM payments WHERE order_id=? AND payment_type='RENTAL' ORDER BY id DESC LIMIT 1 FOR UPDATE");
                 $paymentQuery->execute([$box['order_id']]);
@@ -248,6 +266,7 @@ class StaffController extends Controller
                 if (!(int)$remaining->fetchColumn()) {
                     $db->prepare("UPDATE rental_orders SET order_status='RETURNED',returned_at=NOW() WHERE id=?")
                         ->execute([$box['order_id']]);
+                    $db->prepare("UPDATE customer_return_requests SET status='COMPLETED',processed_at=NOW(),processed_by=? WHERE order_id=? AND status='APPROVED'")->execute([$user['id'],$box['order_id']]);
                 } else {
                     $db->prepare("UPDATE rental_orders SET order_status='PARTIALLY_RETURNED' WHERE id=?")
                         ->execute([$box['order_id']]);
@@ -277,6 +296,23 @@ class StaffController extends Controller
             Flash::set('error', $error->getMessage());
         }
 
+        $this->redirect('/staff');
+    }
+
+    public function processReturnRequest(): void
+    {
+        $user = $this->requireAuth(['STAFF', 'ADMIN']); verify_csrf();
+        $id=(int)($_POST['request_id']??0);$status=$_POST['status']??'';$note=trim($_POST['staff_note']??'');$db=Database::connection();
+        try {
+            if(!in_array($status,['APPROVED','DECLINED'],true))throw new \RuntimeException('Trạng thái yêu cầu không hợp lệ.');
+            $db->beginTransaction();
+            $sql='SELECT * FROM customer_return_requests WHERE id=? AND status=\'PENDING\' FOR UPDATE';$q=$db->prepare($sql);$q->execute([$id]);$request=$q->fetch();
+            if(!$request)throw new \RuntimeException('Yêu cầu đã được xử lý hoặc không tồn tại.');
+            if($user['role_code']!=='ADMIN'&&!$this->canUseLocation($db,$user,(int)$request['location_id']))throw new \RuntimeException('Bạn chưa được phân công tại điểm trả này.');
+            $db->prepare('UPDATE customer_return_requests SET status=?,staff_note=?,processed_at=NOW(),processed_by=? WHERE id=?')->execute([$status,mb_substr($note,0,500),$user['id'],$id]);
+            $db->prepare("INSERT INTO rental_order_events(order_id,actor_user_id,event_type,location_id,note) VALUES(?,?,?, ?,?)")->execute([$request['order_id'],$user['id'],$status==='APPROVED'?'RETURN_APPROVED':'RETURN_DECLINED',$request['location_id'],$note?:($status==='APPROVED'?'Đã xác nhận điểm nhận trả':'Yêu cầu trả hộp chưa được chấp nhận')]);
+            $db->commit();Flash::set('success',$status==='APPROVED'?'Đã xác nhận yêu cầu. Khách mang hộp và mã QR đến điểm đã chọn.':'Đã từ chối yêu cầu trả hộp.');
+        } catch (\Throwable $error) { if($db->inTransaction())$db->rollBack();Flash::set('error',$error instanceof \RuntimeException?$error->getMessage():'Không thể cập nhật yêu cầu trả hộp.'); }
         $this->redirect('/staff');
     }
 

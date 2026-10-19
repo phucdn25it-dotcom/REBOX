@@ -59,7 +59,24 @@ class RentalController extends Controller {
   $pay=$db->prepare("SELECT * FROM payments WHERE order_id=? AND payment_type='RENTAL' ORDER BY id DESC LIMIT 1");$pay->execute([$id]);$payment=$pay->fetch();
   $refundQuery=$db->prepare("SELECT * FROM deposit_transactions WHERE order_id=? AND transaction_type='REFUND' ORDER BY id DESC LIMIT 1");$refundQuery->execute([$id]);$depositRefund=$refundQuery->fetch();
   $eventsQuery=$db->prepare("SELECT e.*,u.name actor_name,l.name location_name,c.serial_code FROM rental_order_events e LEFT JOIN users u ON u.id=e.actor_user_id LEFT JOIN locations l ON l.id=e.location_id LEFT JOIN containers c ON c.id=e.container_id WHERE e.order_id=? ORDER BY e.created_at DESC,e.id DESC");$eventsQuery->execute([$id]);
-  $this->view('account/order',['title'=>'Chi tiết đơn','items'=>$items,'boxes'=>$q->fetchAll(),'payment'=>$payment,'depositRefund'=>$depositRefund,'events'=>$eventsQuery->fetchAll(),'canManage'=>$canManage]);
+  $returnQuery=$db->prepare('SELECT cr.*,l.name location_name,u.name processor_name FROM customer_return_requests cr JOIN locations l ON l.id=cr.location_id LEFT JOIN users u ON u.id=cr.processed_by WHERE cr.order_id=? ORDER BY cr.id DESC');$returnQuery->execute([$id]);
+  $returnLocations=$db->query("SELECT id,name,address FROM locations WHERE status='ACTIVE' AND accepts_returns=1 ORDER BY name")->fetchAll();
+  $this->view('account/order',['title'=>'Chi tiết đơn','items'=>$items,'boxes'=>$q->fetchAll(),'payment'=>$payment,'depositRefund'=>$depositRefund,'events'=>$eventsQuery->fetchAll(),'canManage'=>$canManage,'returnRequests'=>$returnQuery->fetchAll(),'returnLocations'=>$returnLocations]);
  } public function extend():void{$u=$this->requireAuth();verify_csrf();$id=(int)($_POST['order_id']??0);$days=max(1,min(7,(int)($_POST['days']??1)));$db=Database::connection();$s=$db->prepare("SELECT o.*,SUM(ri.quantity*p.late_fee_per_day) daily FROM rental_orders o JOIN rental_items ri ON ri.order_id=o.id JOIN products p ON p.id=ri.product_id WHERE o.id=? AND o.user_id=? GROUP BY o.id");$s->execute([$id,$u['id']]);$o=$s->fetch();if(!$o||!in_array($o['order_status'],['RENTED','PARTIALLY_RETURNED'],true)||strtotime($o['due_at'])<time()){Flash::set('error','Đơn chưa đủ điều kiện gia hạn.');$this->redirect('/orders');}$new=(new \DateTimeImmutable($o['due_at']))->modify("+$days days");$fee=(float)$o['daily']*$days;$db->prepare("INSERT INTO rental_extensions(order_id,requested_due_at,extra_fee,status,processed_by) VALUES(?,?,?,'APPROVED',?)")->execute([$id,$new->format('Y-m-d H:i:s'),$fee,$u['id']]);$db->prepare('UPDATE rental_orders SET due_at=?,fee_total=fee_total+? WHERE id=?')->execute([$new->format('Y-m-d H:i:s'),$fee,$id]);$db->prepare("INSERT INTO payments(order_id,payment_type,provider,amount,status,paid_at) VALUES(?,'EXTENSION','DEMO',?,'PAID',NOW())")->execute([$id,$fee]);Flash::set('success','Đã gia hạn. Phí demo: '.money($fee));$this->redirect('/orders');}
+
+ public function requestReturn():void
+ {
+  $user=$this->requireAuth(['CUSTOMER']);verify_csrf();$orderId=(int)($_POST['order_id']??0);$locationId=(int)($_POST['location_id']??0);$note=trim($_POST['customer_note']??'');$db=Database::connection();
+  try{$db->beginTransaction();$orderQuery=$db->prepare("SELECT id,order_status FROM rental_orders WHERE id=? AND user_id=? FOR UPDATE");$orderQuery->execute([$orderId,$user['id']]);$order=$orderQuery->fetch();
+   if(!$order||!in_array($order['order_status'],['RENTED','PARTIALLY_RETURNED'],true))throw new \RuntimeException('Đơn này hiện chưa thể yêu cầu trả hộp.');
+   $out=$db->prepare("SELECT COUNT(*) FROM rental_item_containers ric JOIN rental_items ri ON ri.id=ric.rental_item_id WHERE ri.order_id=? AND ric.item_status='OUT'");$out->execute([$orderId]);if((int)$out->fetchColumn()<1)throw new \RuntimeException('Đơn không còn hộp nào đang được mượn.');
+   $location=$db->prepare("SELECT id FROM locations WHERE id=? AND status='ACTIVE' AND accepts_returns=1");$location->execute([$locationId]);if(!$location->fetchColumn())throw new \RuntimeException('Vui lòng chọn điểm đang nhận trả hộp.');
+   $active=$db->prepare("SELECT id FROM customer_return_requests WHERE order_id=? AND status IN ('PENDING','APPROVED') LIMIT 1 FOR UPDATE");$active->execute([$orderId]);if($active->fetchColumn())throw new \RuntimeException('Đơn đã có yêu cầu trả đang được xử lý.');
+   $db->prepare("INSERT INTO customer_return_requests(order_id,user_id,location_id,customer_note) VALUES(?,?,?,?)")->execute([$orderId,$user['id'],$locationId,mb_substr($note,0,500)]);
+   $db->prepare("INSERT INTO rental_order_events(order_id,actor_user_id,event_type,location_id,note) VALUES(?,?,'RETURN_REQUESTED',?,?)")->execute([$orderId,$user['id'],$locationId,$note?:'Khách gửi yêu cầu trả hộp']);
+   $db->commit();Flash::set('success','Đã gửi yêu cầu trả hộp. Nhân viên sẽ xác nhận tại điểm bạn chọn.');
+  }catch(\Throwable $e){if($db->inTransaction())$db->rollBack();Flash::set('error',$e instanceof \RuntimeException?$e->getMessage():'Chưa thể gửi yêu cầu trả hộp.');}
+  $this->redirect('/order?id='.$orderId);
+ }
 }
 

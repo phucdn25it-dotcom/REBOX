@@ -9,13 +9,21 @@
         <div class="staff-section-heading"><span class="eyebrow dark-eyebrow">NHẬN VÀ BÀN GIAO ĐƠN</span><h2>Quét hoặc nhập mã QR</h2><p>Nhập token QR trong chi tiết đơn để bàn giao hộp, nhận hộp trả hoặc xác nhận vệ sinh.</p></div>
         <form class="admin-form" method="post" action="<?=e(url('/staff/action'))?>">
             <?=csrf_field()?>
-            <label class="span-all">QR token<input name="qr_token" required placeholder="Dán token QR tại đây"></label>
+            <label class="span-all">QR token<input name="qr_token" id="staff-qr-token" required placeholder="Quét mã QR hoặc nhập token tại đây"></label>
+            <div class="span-all"><button class="link-btn" id="start-qr-scan" type="button">Mở camera quét QR</button><video id="staff-qr-video" class="staff-qr-video" playsinline muted hidden></video><small id="staff-qr-status" aria-live="polite">Có thể nhập token thủ công nếu thiết bị không hỗ trợ quét.</small></div>
             <label>Thao tác<select name="action"><option value="checkout">Bàn giao hộp</option><option value="return">Nhận hộp trả</option><option value="clean">Hoàn tất vệ sinh</option></select></label>
             <label>Tình trạng hộp<select name="condition"><option value="CLEAN">Sạch, dùng lại được</option><option value="DIRTY">Cần vệ sinh</option><option value="DAMAGED">Hư hỏng / cách ly</option><option value="MISSING">Thất lạc</option></select></label>
             <label>Điểm trả<select name="location_id"><?php foreach($locations as $location):?><option value="<?=$location['id']?>"><?=e($location['name'])?></option><?php endforeach;?></select></label>
             <label>Ghi chú<input name="note"></label>
             <button class="btn btn-dark">Ghi nhận thao tác ↗</button>
         </form>
+    </section>
+
+    <section class="admin-card">
+        <div class="staff-section-heading"><span class="eyebrow dark-eyebrow">YÊU CẦU TRẢ HỘP</span><h2>Khách chờ xác nhận điểm trả</h2><p>Duyệt yêu cầu để khách biết điểm nhận trả; khi khách mang hộp đến, quét QR ở biểu mẫu bàn giao phía trên.</p></div>
+        <div class="table-wrap"><table><thead><tr><th>Đơn</th><th>Khách</th><th>Điểm trả</th><th>Ghi chú khách</th><th>Thao tác</th></tr></thead><tbody>
+        <?php foreach(($returnRequests??[]) as $request):?><tr><td><a class="link-btn" href="<?=e(url('/order?id='.(int)$request['order_id']))?>"><?=e($request['order_code'])?></a></td><td><?=e($request['customer'])?></td><td><?=e($request['location_name'])?></td><td><?=e($request['customer_note']?:'—')?></td><td><form method="post" action="<?=e(url('/staff/return-request'))?>"><?=csrf_field()?><input type="hidden" name="request_id" value="<?=$request['id']?>"><input name="staff_note" maxlength="500" placeholder="Ghi chú"><button class="link-btn" name="status" value="APPROVED">Xác nhận</button><button class="link-btn" name="status" value="DECLINED">Từ chối</button></form></td></tr><?php endforeach;?>
+        <?php if(empty($returnRequests)):?><tr><td colspan="5">Chưa có yêu cầu trả hộp đang chờ.</td></tr><?php endif;?></tbody></table></div>
     </section>
 
     <div class="staff-inventory-grid">

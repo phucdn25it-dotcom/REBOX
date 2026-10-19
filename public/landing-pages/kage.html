@@ -526,19 +526,23 @@ h1,h2,h3{ font-weight:400; margin:0; letter-spacing:-.005em; }
   .foot-grid{ grid-template-columns:1fr 1fr; }
 }
 @media (max-width:820px){
+  :root{ --nav-h:68px; --pad:16px; }
   .nav-links{
-    display:flex; position:fixed; top:0; right:0; bottom:0; width:min(84vw,360px);
-    padding:calc(var(--nav-h) + 28px) var(--pad) 34px; flex-direction:column; align-items:flex-start; gap:0; overflow-y:auto;
-    background:rgba(3,6,9,.98); border-left:1px solid var(--line-soft);
-    transform:translate3d(100%,0,0); opacity:0; visibility:hidden; pointer-events:none;
-    transition:transform .65s var(--ease-out), opacity .4s, visibility 0s linear .65s;
+    display:flex; position:fixed; top:var(--nav-h); left:0; right:0; bottom:0;
+    width:100vw; height:calc(100dvh - var(--nav-h)); max-height:calc(100dvh - var(--nav-h));
+    padding:12px max(var(--pad),env(safe-area-inset-left)) max(22px,env(safe-area-inset-bottom)) max(var(--pad),env(safe-area-inset-right));
+    flex-direction:column; align-items:stretch; gap:0; overflow-y:auto; overscroll-behavior:contain;
+    background:rgba(5,9,7,.985); border:0; border-top:1px solid var(--line-soft);
+    transform:translate3d(0,12px,0); opacity:0; visibility:hidden; pointer-events:none;
+    transition:transform .28s var(--ease-out), opacity .22s ease, visibility 0s linear .28s;
+    -webkit-overflow-scrolling:touch;
   }
   .nav.menu-open .nav-links{
-    transform:none; opacity:1; visibility:visible; pointer-events:auto; transition-delay:0s;
+    transform:none; opacity:1; visibility:visible; pointer-events:auto; transition-delay:0s; z-index:52;
   }
   .nav-links .nav-link{
-    width:100%; height:auto; padding:17px 0; overflow:visible; border-bottom:1px solid var(--line-soft);
-    font-size:17px; line-height:1.2;
+    width:100%; min-height:58px; height:auto; padding:13px 4px; overflow:visible; border-bottom:1px solid var(--line-soft);
+    font-size:16px; line-height:1.25; letter-spacing:.12em;
   }
   .nav-links .nav-quick-link{display:block;}
   .nav-quick-panel{display:none!important;}
@@ -558,9 +562,15 @@ h1,h2,h3{ font-weight:400; margin:0; letter-spacing:-.005em; }
      opens. Without transition:none it eases out over .55s and the sheet spends
      that whole time measured against the bar. */
   .nav.menu-open{ transform:none; transition:none; }
-  .nav-burger{ margin-left:auto; }
-  .nav-burger.active i:nth-child(1){ top:7px; width:26px; transform:rotate(45deg); }
-  .nav-burger.active i:nth-child(2){ top:7px; width:26px; transform:rotate(-45deg); }
+  .nav-burger{
+    display:block; width:48px; height:48px; margin-left:auto; padding:0;
+    border:1px solid rgba(223,231,224,.2); border-radius:14px; z-index:55;
+    background:rgba(255,255,255,.055); touch-action:manipulation;
+  }
+  .nav-burger i:nth-child(1){ top:19px; right:10px; width:25px; }
+  .nav-burger i:nth-child(2){ top:27px; right:10px; width:18px; }
+  .nav-burger.active i:nth-child(1){ top:23px; right:10px; width:25px; transform:rotate(45deg); }
+  .nav-burger.active i:nth-child(2){ top:23px; right:10px; width:25px; transform:rotate(-45deg); }
   html.nav-open,html.nav-open body{ overflow:hidden; }
   .rail{ display:none; }
   .hero-side{ display:none; }
@@ -989,6 +999,7 @@ body[data-layout-footer="b"] .foot-base span:last-child{ text-align:right; }
     <span class="brand-tx"><b>REBOX</b><i>REUSE, REIMAGINED</i></span>
   </a>
   <nav class="nav-links" id="navlinks">
+    <label class="kage-font-choice">Kiểu chữ<select data-font-choice aria-label="Chọn kiểu chữ"><option value="default">Mặc định</option><option value="sans">Dễ đọc</option><option value="serif">Có chân</option></select></label>
     <a class="nav-link" href="../catalog" target="_top" data-cursor><span>Thuê hộp</span><span class="alt">Chọn hộp</span></a>
     <a class="nav-link" href="#pathways" data-cursor><span>Bộ sưu tập</span><span class="alt">Hộp ReBox</span></a>
     <a class="nav-link" href="#lessons" data-cursor><span>Cách thuê</span><span class="alt">3 bước đơn giản</span></a>
@@ -1018,6 +1029,12 @@ body[data-layout-footer="b"] .foot-base span:last-child{ text-align:right; }
   </div>
   <button class="nav-burger" type="button" aria-label="Mở menu chức năng" aria-controls="navlinks navquick" aria-expanded="false" data-cursor><i></i><i></i></button>
 </header>
+
+<style>
+body[data-rebox-font="sans"],body[data-rebox-font="sans"] :not(svg):not(svg *){font-family:Arial,Helvetica,sans-serif!important}
+body[data-rebox-font="serif"],body[data-rebox-font="serif"] :not(svg):not(svg *){font-family:Georgia,"Times New Roman",serif!important}
+.kage-font-choice{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;padding:10px 0}.kage-font-choice select{border:1px solid #ffffff38;border-radius:9px;background:#1d2722;color:var(--text);padding:8px 10px;font:inherit}
+</style>
 
 <div class="page" id="top">
 
@@ -4568,6 +4585,10 @@ const names = ['ReBox', 'Vòng lặp ReBox', 'Hộp hợp bữa ăn', 'Cách thu
   const dots = $$('#rail button');
   const links = $$('.nav-link');
   const burger = $('.nav-burger');
+  const fontChoices = $$('[data-font-choice]');
+  const applyFont = value => { document.body.dataset.reboxFont = value; localStorage.setItem('rebox-font', value); fontChoices.forEach(select => select.value = value); };
+  applyFont(localStorage.getItem('rebox-font') || 'default');
+  fontChoices.forEach(select => select.addEventListener('change', () => applyFont(select.value)));
   const closeMenu = () => {
     nav.classList.remove('menu-open');
     burger.classList.remove('active');
